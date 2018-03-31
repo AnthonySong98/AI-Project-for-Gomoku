@@ -19,11 +19,13 @@ Gomoku AI implement
 #include<limits.h>
 #include<float.h>
 #include<cmath>
-
+#include<fstream>
 
 using namespace std;
 
 #define moveMAX 7
+
+fstream fout("C:\\Users\\Administrator\\Desktop\\test.txt");
 
 
 typedef struct MOVE {
@@ -131,6 +133,7 @@ public:
 	bool isGameOver();
 
 	void Print();
+	void PrintToFile();
 
 	void StartGame(int color);
 	void StartAIGame(int color, int depth);
@@ -262,7 +265,7 @@ Gomoku::Gomoku(int setAIcolor)
 {
 	mark = 0;
 	AIColor = setAIcolor;
-	CurrentColor = 1;//black takes the first step
+	CurrentColor = setAIcolor;//black takes the first step
 	for (int i = 0; i < 15; i++)
 		for (int j = 0; j < 15; j++)
 			Grid[i][j] = 0;
@@ -452,6 +455,25 @@ void Gomoku::Print()
 
 }
 
+void Gomoku::PrintToFile()
+{
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 15; j++)
+		{
+			switch (Grid[i][j])
+			{
+			case 0:fout << 'o' << ' '; break;
+			case 1:fout << '*' << ' '; break;
+			case 2:fout << '+' << ' '; break;
+			default:
+				break;
+			}
+		}
+		fout << endl;
+	}
+}
+
 void Gomoku::StartGame(int color)
 {
 	int x; int y;
@@ -528,11 +550,26 @@ void Gomoku::StartAIGame2(int color, int depth)
 	while (1) {
 		if (color == AIColor)
 		{
-			if (step == 0) {
+			if (step == 0&&AIColor==1) {
 				SetMove(7, 7, AIColor);
 				x = 7; y = 7;
 				cout << "AI takes the coordinate: " << x << ", " << y << endl;
 				step++;
+			}
+			else if (step == 0 && AIColor == 2) {
+				if (VaildMove(7, 8)) {
+					SetMove(7, 8, AIColor);
+					x = 7; y = 8;
+					cout << "AI takes the coordinate: " << x << ", " << y << endl;
+					step++;
+				}
+				else if (VaildMove(7, 7)) {
+					SetMove(7, 7, AIColor);
+					x = 7; y = 7;
+					cout << "AI takes the coordinate: " << x << ", " << y << endl;
+					step++;
+				}
+				
 			}
 			else {
 				//int alpha = INT_MIN; int beta = INT_MAX;
@@ -557,7 +594,10 @@ void Gomoku::StartAIGame2(int color, int depth)
 
 		if (color == AIColor % 2 + 1)
 		{
+			if(color==2)
 			cout << "please input the coordinate of white: ";
+			if(color==1)
+			cout << "please input the coordinate of black: ";
 			cin >> x >> y;
 			while (!VaildMove(x, y)) cin >> x >> y;
 			SetMove(x, y, color);
@@ -579,30 +619,49 @@ void Gomoku::StartAIGame3(int color, int depth)
 	while (1) {
 		if (color == AIColor)
 		{
-			if (step == 0) {
-				SetMove(7, 7, AIColor);
-				x = 7; y = 7;
-				cout << "AI takes the coordinate: " << x << ", " << y << endl;
-				step++;
-			}
-			else {
-				//int alpha = INT_MIN; int beta = INT_MAX;
-				double alpha = -DBL_MAX; double beta = DBL_MAX;
-				MoveValue res = negaMax(2,AIColor);
-
-				MOVE DecideMove = res.returnMove;
-				x = DecideMove.x; y = DecideMove.y;
-				cout << x << ' ' << y;
-
-				system("pause");
-				if (VaildMove(x, y)) {
-					SetMove(x, y, AIColor);
+			if (color == AIColor)
+			{
+				if (step == 0 && AIColor == 1) {
+					SetMove(7, 7, AIColor);
+					x = 7; y = 7;
 					cout << "AI takes the coordinate: " << x << ", " << y << endl;
-					cout << EvaluateState() << endl;
-					cout << res.returnValue;
-					system("pause");
+					step++;
 				}
-				else cout << "Invaild Coordinate!\n";
+				else if (step == 0 && AIColor == 2) {
+					if (VaildMove(7, 8)) {
+						SetMove(7, 8, AIColor);
+						x = 7; y = 8;
+						cout << "AI takes the coordinate: " << x << ", " << y << endl;
+						step++;
+					}
+					else if (VaildMove(7, 7)) {
+						SetMove(7, 7, AIColor);
+						x = 7; y = 7;
+						cout << "AI takes the coordinate: " << x << ", " << y << endl;
+						step++;
+					}
+
+				}
+
+				else {
+					//int alpha = INT_MIN; int beta = INT_MAX;
+					double alpha = -DBL_MAX; double beta = DBL_MAX;
+					MoveValue res = negaMax(2, AIColor);
+
+					MOVE DecideMove = res.returnMove;
+					x = DecideMove.x; y = DecideMove.y;
+					cout << x << ' ' << y;
+
+					system("pause");
+					if (VaildMove(x, y)) {
+						SetMove(x, y, AIColor);
+						cout << "AI takes the coordinate: " << x << ", " << y << endl;
+						cout << EvaluateState() << endl;
+						cout << res.returnValue;
+						system("pause");
+					}
+					else cout << "Invaild Coordinate!\n";
+				}
 			}
 		}
 
@@ -1245,7 +1304,13 @@ MoveValue Gomoku::minMax(double alpha, double beta, int maxDepth, int player)
 	if (maxDepth == 0 || isGameOver()) {
 		//value = EvaluateState();
 		//MOVE temp()
+		
+		
+
 		MoveValue res(EvaluateState());
+		//Print();
+		//cout << endl;
+		//cout<<res.returnValue<<endl;
 		return res;
 	}
 	MoveValue returnMove;
@@ -1328,9 +1393,11 @@ MoveValue Gomoku::minMax(double alpha, double beta, int maxDepth, int player)
 	}
 }
 
+
+
 MoveValue Gomoku::negaMax(int depth, int color)
 {
-	if (depth == 0 || isGameOver()) {
+	if (depth == 0 /*|| isGameOver()*/) {
 			double res = EvaluateState();
 			return MoveValue(res);
 	}
@@ -1355,10 +1422,15 @@ MoveValue Gomoku::negaMax(int depth, int color)
 
 
 int main() {
-	Gomoku test;
-	//test.StartAIGame3(1, 2);//NegaMax
+	Gomoku test(2);
+    //test.StartAIGame3(1, 2);//NegaMax
+	//基本完美
+
 	test.StartAIGame2(1, 2);//MiniMax
+	//基本完美
+
 	//test.StartAIGame(1, 2);//Alpha-Beta PV
+	//狗屁不通
 	system("pause");
 	return 0;
 }
