@@ -25,7 +25,7 @@ using namespace std;
 
 #define moveMAX 7
 
-fstream fout("C:\\Users\\Administrator\\Desktop\\test.txt");
+fstream fout("C:\\Users\\Administrator\\Desktop\\test3.txt", fstream::out | fstream::app);
 
 
 typedef struct MOVE {
@@ -139,6 +139,7 @@ public:
 	void StartAIGame(int color, int depth);
 	void StartAIGame2(int color, int depth);
 	void StartAIGame3(int color, int depth);
+	void AI_VS_AI();
 
 	vector<vector<int>> GenerateLegalMove();
 	vector<vector<int>> GenerateNeighbourMove();
@@ -165,7 +166,7 @@ public:
 	double EvaluateSmallSituation(int a[5], int color);
 
 	MoveValue minMax(double alpha, double beta, int maxDepth, int player);
-	MoveValue negaMax(int depth, int color);
+	MoveValue negaMax(int depth, double alpha, double beta, int color);
 
 	//double Minimax_alphabeta(int depth, double alpha, double beta, bool maximizingPlayer);
 	//friend double Minimax_alphabeta(int A[15][15], int depth, double alpha, double beta, bool maximizingPlayer,MOVE & decisionMove);
@@ -243,7 +244,7 @@ public:
 	}
 
 
-private:
+//private:
 	int Grid[15][15];
 	int CurrentColor;
 	int AIColor;
@@ -646,7 +647,7 @@ void Gomoku::StartAIGame3(int color, int depth)
 				else {
 					//int alpha = INT_MIN; int beta = INT_MAX;
 					double alpha = -DBL_MAX; double beta = DBL_MAX;
-					MoveValue res = negaMax(2, AIColor);
+					MoveValue res = negaMax(depth, alpha,beta,AIColor);
 
 					MOVE DecideMove = res.returnMove;
 					x = DecideMove.x; y = DecideMove.y;
@@ -679,6 +680,12 @@ void Gomoku::StartAIGame3(int color, int depth)
 		color = color % 2 + 1;
 
 	}
+
+}
+
+void Gomoku::AI_VS_AI()
+{
+
 
 }
 
@@ -1395,7 +1402,7 @@ MoveValue Gomoku::minMax(double alpha, double beta, int maxDepth, int player)
 
 
 
-MoveValue Gomoku::negaMax(int depth, int color)
+MoveValue Gomoku::negaMax(int depth, double alpha, double beta, int color)
 {
 	if (depth == 0 /*|| isGameOver()*/) {
 			double res = EvaluateState();
@@ -1410,27 +1417,124 @@ MoveValue Gomoku::negaMax(int depth, int color)
 		MOVE newMove = currentMove;
 		movesIterator++;
 		applyMove(currentMove);
-		double val = -(negaMax(depth - 1, color%2+1).returnValue);
+		double val = -(negaMax(depth - 1, -beta,-alpha,color%2+1).returnValue);
 		Grid[currentMove.x][currentMove.y] = 0;
 		CurrentColor = CurrentColor % 2 + 1;
 		//UnmakeMove();
 		if (val > bestMove.returnValue) { bestMove.returnValue = val; bestMove.returnMove = currentMove; }
+		if (val > alpha) { alpha = val; }
+		if (alpha >= beta) break;
 	}
 	return bestMove;
 }
 
 
+int Board[15][15] = {0};
+void ApplyMove(int i, int j, int color_1) {
+	if (i >= 0 && i < 15 && j >= 0 && j < 15 && Board[i][j] == 0) Board[i][j] = color_1;
+}
+
+void Print_Board() {
+	for (int i = 0; i < 15; i++)
+	{
+		for (int j = 0; j < 15; j++)
+			switch (Board[i][j])
+			{
+			case 0:fout << 'o' << ' '; break;
+			case 1:fout << '*' << ' '; break;
+			case 2:fout << '+' << ' '; break;
+			default:
+				break;
+			}
+		fout << endl;
+	}
+	fout << endl;
+}
+
+
+
+
+void AI_TO_AI() {
+	
+	Print_Board();
+	//system("pause");
+
+	Gomoku AI_a(1);
+	Gomoku AI_b(2);
+	//AI_b.CurrentColor = 1;//???
+
+	ApplyMove(7, 7, 1);
+	AI_a.SetMove(7, 7, AI_a.AIColor);
+	AI_a.CurrentColor = AI_a.CurrentColor & 2 + 1;
+	AI_b.SetMove(7, 7, AI_a.AIColor);
+	AI_b.CurrentColor = AI_b.CurrentColor & 2 + 1;
+
+	ApplyMove(7, 8, 0);
+	AI_a.SetMove(7, 8, AI_b.AIColor);
+	AI_a.CurrentColor = AI_a.CurrentColor & 2 + 1;
+	AI_b.SetMove(7, 8, AI_b.AIColor);
+	AI_b.CurrentColor = AI_b.CurrentColor & 2 + 1;
+
+	MoveValue res;
+	MOVE DecideMove;
+
+	Print_Board();
+	int x; int y;
+	while (AI_a.WinOrLose()==0) {
+
+		res = AI_b.minMax(-DBL_MAX, DBL_MAX, 1, (AI_b.AIColor));
+		DecideMove = res.returnMove;
+		x = DecideMove.x; y = DecideMove.y;
+
+		ApplyMove(x, y, AI_b.AIColor);
+		AI_a.SetMove(x, y, AI_b.AIColor);
+		AI_a.CurrentColor = AI_a.CurrentColor & 2 + 1;
+		AI_b.SetMove(x, y, AI_b.AIColor);
+		AI_b.CurrentColor = AI_b.CurrentColor & 2 + 1;
+
+
+		//system("cls");
+		Print_Board();
+		//system("pause");
+		
+
+		
+		
+		res = AI_a.negaMax(2, -DBL_MAX, DBL_MAX, AI_a.AIColor);
+		 DecideMove = res.returnMove;
+		 x = DecideMove.x;  y = DecideMove.y;
+
+		ApplyMove(x, y, AI_a.AIColor);
+		AI_a.SetMove(x, y, AI_a.AIColor);
+		AI_a.CurrentColor = AI_a.CurrentColor & 2 + 1;
+		AI_b.SetMove(x, y, AI_a.AIColor);
+		AI_b.CurrentColor = AI_b.CurrentColor & 2 + 1;
+
+		//system("cls");
+		Print_Board();
+		//system("pause");
+	
+
+		
+	}
+}
+
+
 
 int main() {
-	Gomoku test(2);
+	//	Gomoku test(2);
     //test.StartAIGame3(1, 2);//NegaMax
 	//基本完美
 
-	test.StartAIGame2(1, 2);//MiniMax
+	//test.StartAIGame2(1, 2);//MiniMax
 	//基本完美
 
 	//test.StartAIGame(1, 2);//Alpha-Beta PV
 	//狗屁不通
+
+
+	AI_TO_AI();
+	//AI对战
 	system("pause");
 	return 0;
 }
