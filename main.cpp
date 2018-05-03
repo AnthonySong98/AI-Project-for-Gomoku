@@ -20,12 +20,15 @@ Gomoku AI implement
 #include<float.h>
 #include<cmath>
 #include<fstream>
+#include<algorithm>
 
 using namespace std;
 
 #define moveMAX 7
 
 fstream fout("C:\\Users\\Administrator\\Desktop\\test3.txt", fstream::out | fstream::app);
+fstream fout2("C:\\Users\\Administrator\\Desktop\\test4.txt", fstream::out | fstream::app);
+
 
 
 typedef struct MOVE {
@@ -38,6 +41,12 @@ typedef struct MOVE {
 		x = tx;
 		y = ty;
 	}
+	bool operator ==(MOVE &a) {
+		if (a.x == x && a.y == y) return true;
+		else return false;
+	}
+
+	
 };
 
 typedef struct LINE {
@@ -70,6 +79,18 @@ struct MoveValue {
 
 };
 
+struct MOVEwithValue
+{
+	MOVE candidate_move;
+	double eval_value;
+
+};
+
+
+	bool compareInterval(MOVEwithValue& l, MOVEwithValue& r)
+	{
+		return l.eval_value < r.eval_value;
+	}
 
 
 
@@ -139,11 +160,15 @@ public:
 	void StartAIGame(int color, int depth);
 	void StartAIGame2(int color, int depth);
 	void StartAIGame3(int color, int depth);
+	void StartAIGame4(int color, int depth);
 	void AI_VS_AI();
+
+	bool HasNeighbour(int i, int j);
 
 	vector<vector<int>> GenerateLegalMove();
 	vector<vector<int>> GenerateNeighbourMove();
 	vector<MOVE> GenerateLegalMoves();
+	vector<MOVE> GernerteSortedMoves(int color);
 
 	int WinFive(int x, int y, int color);
 	int  AliveFour(int x, int y, int color);
@@ -162,12 +187,13 @@ public:
 
 
 	double EvaluatePoint(int i, int j);
+	double EvaluateCandidatePoint(int i, int j);
 	double EvaluateState();
 	double EvaluateSmallSituation(int a[5], int color);
 
 	MoveValue minMax(double alpha, double beta, int maxDepth, int player);
 	MoveValue negaMax(int depth, double alpha, double beta, int color);
-
+	MoveValue Principal_variation_search(int depth, double alpha, double beta);
 	//double Minimax_alphabeta(int depth, double alpha, double beta, bool maximizingPlayer);
 	//friend double Minimax_alphabeta(int A[15][15], int depth, double alpha, double beta, bool maximizingPlayer,MOVE & decisionMove);
 
@@ -574,12 +600,20 @@ void Gomoku::StartAIGame2(int color, int depth)
 			}
 			else {
 				//int alpha = INT_MIN; int beta = INT_MAX;
+				double dur;
+				clock_t start, end;
+				start = clock();
+
 				double alpha = -DBL_MAX; double beta = DBL_MAX;
 				MoveValue res = minMax(alpha, beta, depth, (AIColor));
 
 				MOVE DecideMove = res.returnMove;
 				x = DecideMove.x; y = DecideMove.y;
 				cout << x << ' ' << y;
+				cout << endl;
+				end = clock();
+				dur = (double)(end - start);
+				printf("AI Use Time:%f\n", (dur / CLOCKS_PER_SEC));
 
 				system("pause");
 				if (VaildMove(x, y)) {
@@ -646,8 +680,89 @@ void Gomoku::StartAIGame3(int color, int depth)
 
 				else {
 					//int alpha = INT_MIN; int beta = INT_MAX;
+
+					double dur;
+					clock_t start, end;
+					start = clock();
+
 					double alpha = -DBL_MAX; double beta = DBL_MAX;
 					MoveValue res = negaMax(depth, alpha,beta,AIColor);
+
+					MOVE DecideMove = res.returnMove;
+					x = DecideMove.x; y = DecideMove.y;
+					cout << x << ' ' << y;
+
+					cout << endl;
+					end = clock();
+					dur = (double)(end - start);
+					printf("AI Use Time:%f\n", (dur / CLOCKS_PER_SEC));
+
+					system("pause");
+					if (VaildMove(x, y)) {
+						SetMove(x, y, AIColor);
+						cout << "AI takes the coordinate: " << x << ", " << y << endl;
+						cout << EvaluateState() << endl;
+						cout << res.returnValue;
+						system("pause");
+					}
+					else cout << "Invaild Coordinate!\n";
+				}
+			}
+		}
+
+		if (color == AIColor % 2 + 1)
+		{
+			cout << "please input the coordinate of white: ";
+			cin >> x >> y;
+			while (!VaildMove(x, y)) cin >> x >> y;
+			SetMove(x, y, color);
+		}
+		system("cls");
+		Print();
+		if (WhetherWin(x, y, 1)) { cout << "Black Win!\n"; break; }
+		if (WhetherWin(x, y, 2)) { cout << "White Win!\n"; break; }
+		color = color % 2 + 1;
+
+	}
+
+}
+
+void Gomoku::StartAIGame4(int color, int depth)
+{
+	int x; int y;
+	Print();
+	stack<MOVE> MoveStack; int step = 0;
+	while (1) {
+		if (color == AIColor)
+		{
+			if (color == AIColor)
+			{
+				if (step == 0 && AIColor == 1) {
+					SetMove(7, 7, AIColor);
+					x = 7; y = 7;
+					cout << "AI takes the coordinate: " << x << ", " << y << endl;
+					step++;
+				}
+				else if (step == 0 && AIColor == 2) {
+					if (VaildMove(7, 8)) {
+						SetMove(7, 8, AIColor);
+						x = 7; y = 8;
+						cout << "AI takes the coordinate: " << x << ", " << y << endl;
+						step++;
+					}
+					else if (VaildMove(7, 7)) {
+						SetMove(7, 7, AIColor);
+						x = 7; y = 7;
+						cout << "AI takes the coordinate: " << x << ", " << y << endl;
+						step++;
+					}
+
+				}
+
+				else {
+					//int alpha = INT_MIN; int beta = INT_MAX;
+					double alpha = -DBL_MAX; double beta = DBL_MAX;
+					MoveValue res = Principal_variation_search(depth,alpha,beta);
 
 					MOVE DecideMove = res.returnMove;
 					x = DecideMove.x; y = DecideMove.y;
@@ -680,13 +795,28 @@ void Gomoku::StartAIGame3(int color, int depth)
 		color = color % 2 + 1;
 
 	}
-
 }
 
 void Gomoku::AI_VS_AI()
 {
 
 
+}
+
+bool Gomoku::HasNeighbour(int i, int j)
+{
+	bool res=false;
+	if (Grid[i][j] == 0) {
+		if (i - 1 >= 0 && j - 1 >= 0 && Grid[i - 1][j - 1] > 0) res = true;
+		if (i - 1 >= 0 && j  >= 0 && Grid[i - 1][j] > 0) res = true;
+		if (i - 1 >= 0 && j + 1 <=14 && Grid[i - 1][j + 1] > 0) res = true;
+		if (i  >= 0 && j - 1 >= 0 && Grid[i ][j - 1] > 0) res = true;
+		if (i  >= 0 && j + 1 <= 14 && Grid[i][j + 1] > 0) res = true;
+		if (i + 1 <= 14 && j - 1 >= 0 && Grid[i + 1][j - 1] > 0) res = true;
+		if (i + 1 <= 14 && j  >= 0 && Grid[i + 1][j] > 0) res = true;
+		if (i + 1 <= 14 && j + 1 <= 14 && Grid[i + 1][j + 1] > 0) res = true;
+	}
+	return res;
 }
 
 vector<vector<int>> Gomoku::GenerateLegalMove()
@@ -751,6 +881,37 @@ vector<MOVE> Gomoku::GenerateLegalMoves()
 
 			}
 		}
+	return res;
+}
+
+vector<MOVE> Gomoku::GernerteSortedMoves(int color)
+{
+	vector<MOVEwithValue> pq;
+
+	int i, j;
+
+	for (i = 0; i<15; i++)
+		for (j = 0; j < 15; j++)
+		{
+			if (HasNeighbour(i,j) ){
+					MOVE newMove(i, j); 
+					MOVEwithValue newMOVEwithValue; 
+					newMOVEwithValue.candidate_move = newMove; 
+					newMOVEwithValue.eval_value = EvaluateCandidatePoint(i, j); 
+					pq.push_back(newMOVEwithValue);
+			}
+			
+		}
+
+	if (color == AIColor % 2 + 1) { sort(pq.begin(), pq.end(), compareInterval); }
+	if(color==AIColor){ sort(pq.rbegin(), pq.rend(), compareInterval); }
+
+	vector<MOVE> res; MOVE temp;
+	for (int k = 0; k < pq.size(); k++) {
+		temp = pq[k].candidate_move;
+		res.push_back(temp);
+	}
+
 	return res;
 }
 
@@ -1283,6 +1444,15 @@ double Gomoku::EvaluatePoint(int i, int j)
 	
 }
 
+double Gomoku::EvaluateCandidatePoint(int i, int j)
+{
+	Grid[i][j] = CurrentColor;
+	int color = Grid[i][j];
+	Grid[i][j] = 0;
+	return  WinFive(i, j, color)* (100000000) + AliveFour(i, j, color) * (3000000) + DeadFourA(i, j, color) * 20000 + DeadFourB(i, j, color) * 18000 + DeadFourC(i, j, color) * 19000 + AliveThree(i, j, color) * 10000 + DeadThressA(i, j, color) * 500 + DeadThressB(i, j, color) * 800 + DeadThressC(i, j, color) * 600 + DeadThressD(i, j, color) * 550 + AliveTwo(i, j, color) * 650 + DeadTwoA(i, j, color) * 150 + DeadTwoB(i, j, color) * 250 + DeadTwoC(i, j, color) * 200;
+
+}
+
 double Gomoku::EvaluateState()
 {
 	double  res = 0; int i, j;
@@ -1302,7 +1472,12 @@ MoveValue Gomoku::minMax(double alpha, double beta, int maxDepth, int player)
 	//	MoveValue * pMoveValue = new MoveValue();
 	//	return *pMoveValue;
 	//}
-	vector<MOVE> moves = GenerateLegalMoves();
+
+
+	//vector<MOVE> moves = GenerateLegalMoves();
+
+	vector<MOVE> moves = GernerteSortedMoves(player);
+
 	vector<MOVE>::iterator movesIterator = moves.begin();
 	//iterator<MOVE> movesIterator = moves.iterator();
 	//double value = 0;
@@ -1410,7 +1585,10 @@ MoveValue Gomoku::negaMax(int depth, double alpha, double beta, int color)
 	}
 	MoveValue bestMove(-DBL_MAX);
 
-	vector<MOVE>LegalMoves = GenerateLegalMoves();
+	//vector<MOVE>LegalMoves = GenerateLegalMoves();
+
+	vector<MOVE>LegalMoves = GernerteSortedMoves(color);
+
 	vector<MOVE>::iterator movesIterator = LegalMoves.begin();
 	while (movesIterator != LegalMoves.end()) {
 		MOVE currentMove = *movesIterator;
@@ -1424,6 +1602,63 @@ MoveValue Gomoku::negaMax(int depth, double alpha, double beta, int color)
 		if (val > bestMove.returnValue) { bestMove.returnValue = val; bestMove.returnMove = currentMove; }
 		if (val > alpha) { alpha = val; }
 		if (alpha >= beta) break;
+	}
+	return bestMove;
+}
+
+MoveValue Gomoku::Principal_variation_search(int depth, double alpha, double beta)
+{
+	if (depth <= 0 /*|| isGameOver()*/) {
+		double res = EvaluateState();
+		return MoveValue(res);
+	}
+	vector<MOVE>LegalMoves = GenerateLegalMoves();
+	MoveValue bestMove;
+	vector<MOVE>::iterator movesIterator = LegalMoves.begin();
+
+	MOVE currentMove = *movesIterator;
+	MOVE newMove = currentMove;
+	movesIterator++;
+	applyMove(currentMove);
+
+	bestMove.returnValue = -Principal_variation_search(depth - 1, -beta, -alpha).returnValue;
+	bestMove.returnMove = currentMove;
+
+	Grid[currentMove.x][currentMove.y] = 0;
+	CurrentColor = CurrentColor % 2 + 1;
+	//UnmakeMove();
+	if (bestMove.returnValue > alpha) {
+		if (bestMove.returnValue >= beta) return bestMove;
+		alpha = bestMove.returnValue;
+	}
+
+	//all remaining moves
+	while (movesIterator != LegalMoves.end())
+	{
+		currentMove = *movesIterator;
+		newMove = currentMove;
+		movesIterator++;
+		applyMove(currentMove);
+		//make move
+
+		MoveValue score;
+		score.returnValue = -Principal_variation_search(-alpha - 1, -alpha, depth - 1).returnValue;
+		score.returnMove = currentMove;
+
+		if (score.returnValue > alpha&&score.returnValue < beta) {
+			// research with window [alpha,beta]
+			score.returnValue = -Principal_variation_search(-beta, -alpha, depth - 1).returnValue;
+			if (score.returnValue > alpha) alpha = score.returnValue;
+		}
+
+		Grid[currentMove.x][currentMove.y] = 0;
+		CurrentColor = CurrentColor % 2 + 1;
+		//UnmakeMove();
+
+		if (score.returnValue > bestMove.returnValue) {
+			if (score.returnValue >= beta) return score;
+			bestMove = score;
+		}
 	}
 	return bestMove;
 }
@@ -1482,9 +1717,25 @@ void AI_TO_AI() {
 	int x; int y;
 	while (AI_a.WinOrLose()==0) {
 
-		res = AI_b.minMax(-DBL_MAX, DBL_MAX, 1, (AI_b.AIColor));
+		double dur;
+		clock_t start, end;
+		start = clock();
+
+		//res = AI_b.minMax(-DBL_MAX, DBL_MAX, 2, (AI_b.AIColor));
+		res = AI_b.negaMax(2, -DBL_MAX, DBL_MAX, AI_b.AIColor);
+
+
 		DecideMove = res.returnMove;
 		x = DecideMove.x; y = DecideMove.y;
+
+		fout << endl;
+		end = clock();
+		dur = (double)(end - start);
+		fout<< "AI Use Time: " << dur / CLOCKS_PER_SEC;
+
+		fout2 << dur / CLOCKS_PER_SEC<<endl;
+
+		fout << endl;
 
 		ApplyMove(x, y, AI_b.AIColor);
 		AI_a.SetMove(x, y, AI_b.AIColor);
@@ -1497,12 +1748,22 @@ void AI_TO_AI() {
 		Print_Board();
 		//system("pause");
 		
+	
+		start = clock();
+		
+		//res = AI_a.minMax(-DBL_MAX, DBL_MAX, 2, (AI_a.AIColor));
 
-		
-		
-		res = AI_a.negaMax(2, -DBL_MAX, DBL_MAX, AI_a.AIColor);
+		res = AI_a.negaMax(2,-DBL_MAX, DBL_MAX, AI_a.AIColor);
 		 DecideMove = res.returnMove;
 		 x = DecideMove.x;  y = DecideMove.y;
+
+		 fout << endl;
+		 end = clock();
+		 dur = (double)(end - start);
+		 fout << "AI Use Time: " << dur / CLOCKS_PER_SEC;
+		 fout2 << dur / CLOCKS_PER_SEC << endl;
+
+		 fout << endl;
 
 		ApplyMove(x, y, AI_a.AIColor);
 		AI_a.SetMove(x, y, AI_a.AIColor);
@@ -1513,7 +1774,7 @@ void AI_TO_AI() {
 		//system("cls");
 		Print_Board();
 		//system("pause");
-	
+		fout << endl;
 
 		
 	}
@@ -1522,11 +1783,15 @@ void AI_TO_AI() {
 
 
 int main() {
+	
+	//Gomoku test(1);
+	//test.StartAIGame4(1, 2);// Principal_variation_search
+
 	//	Gomoku test(2);
     //test.StartAIGame3(1, 2);//NegaMax
 	//基本完美
 
-	//test.StartAIGame2(1, 2);//MiniMax
+	//test.StartAIGame2(1, 3);//MiniMax
 	//基本完美
 
 	//test.StartAIGame(1, 2);//Alpha-Beta PV
