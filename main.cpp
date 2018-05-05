@@ -164,6 +164,8 @@ public:
 	void AI_VS_AI();
 
 	bool HasNeighbour(int i, int j);
+	bool MustWin(int i, int j, int color);
+	bool MustLose(int i, int j, int color);
 
 	vector<vector<int>> GenerateLegalMove();
 	vector<vector<int>> GenerateNeighbourMove();
@@ -820,6 +822,24 @@ bool Gomoku::HasNeighbour(int i, int j)
 	return res;
 }
 
+bool Gomoku::MustWin(int i, int j, int color)
+{
+	Grid[i][j] = color;
+	if (WinFive(i, j, color)) { Grid[i][j] = 0; return true; }
+	if (AliveFour(i, j, color)) { Grid[i][j] = 0; return true; }
+	if (AliveThree(i, j, color) >= 2) { Grid[i][j] = 0; return true; }
+	return false;
+}
+
+bool Gomoku::MustLose(int i, int j, int color)
+{
+	Grid[i][j] = color%2+1;
+	if (WinFive(i, j, color % 2 + 1)) { Grid[i][j] = 0; return true; }
+	if (AliveFour(i, j, color % 2 + 1)) { Grid[i][j] = 0; return true; }
+	if (AliveThree(i, j, color % 2 + 1) >= 2) { Grid[i][j] = 0; return true; }
+	return false;
+}
+
 vector<vector<int>> Gomoku::GenerateLegalMove()
 {
 	vector<int> oneMove;
@@ -888,13 +908,15 @@ vector<MOVE> Gomoku::GenerateLegalMoves()
 vector<MOVE> Gomoku::GenerateSortedMoves(int color)
 {
 	vector<MOVEwithValue> pq;
-
+	vector<MOVE> res;
 	int i, j;
 
 	for (i = 0; i<15; i++)
 		for (j = 0; j < 15; j++)
 		{
 			if (HasNeighbour(i,j) ){
+				if (MustWin(i, j, color)) { res.push_back(MOVE(i, j)); return res; }
+				if (MustLose(i, j, color)) { res.push_back(MOVE(i, j)); return res; }
 					MOVE newMove(i, j); 
 					MOVEwithValue newMOVEwithValue; 
 					newMOVEwithValue.candidate_move = newMove; 
@@ -907,7 +929,7 @@ vector<MOVE> Gomoku::GenerateSortedMoves(int color)
 	if (color == AIColor % 2 + 1) { sort(pq.rbegin(), pq.rend(), compareInterval); }
 	if(color==AIColor){ sort(pq.rbegin(), pq.rend(), compareInterval); }
 
-	vector<MOVE> res; MOVE temp;
+	 MOVE temp;
 	for (int k = 0; k < pq.size(); k++) {
 		temp = pq[k].candidate_move;
 		res.push_back(temp);
