@@ -168,7 +168,8 @@ public:
 	vector<vector<int>> GenerateLegalMove();
 	vector<vector<int>> GenerateNeighbourMove();
 	vector<MOVE> GenerateLegalMoves();
-	vector<MOVE> GernerteSortedMoves(int color);
+	vector<MOVE> GenerateSortedMoves(int color);
+	vector<MOVE> GenerateSortedMoves();
 
 	int WinFive(int x, int y, int color);
 	int  AliveFour(int x, int y, int color);
@@ -884,7 +885,7 @@ vector<MOVE> Gomoku::GenerateLegalMoves()
 	return res;
 }
 
-vector<MOVE> Gomoku::GernerteSortedMoves(int color)
+vector<MOVE> Gomoku::GenerateSortedMoves(int color)
 {
 	vector<MOVEwithValue> pq;
 
@@ -903,7 +904,7 @@ vector<MOVE> Gomoku::GernerteSortedMoves(int color)
 			
 		}
 
-	if (color == AIColor % 2 + 1) { sort(pq.begin(), pq.end(), compareInterval); }
+	if (color == AIColor % 2 + 1) { sort(pq.rbegin(), pq.rend(), compareInterval); }
 	if(color==AIColor){ sort(pq.rbegin(), pq.rend(), compareInterval); }
 
 	vector<MOVE> res; MOVE temp;
@@ -913,6 +914,12 @@ vector<MOVE> Gomoku::GernerteSortedMoves(int color)
 	}
 
 	return res;
+}
+
+vector<MOVE> Gomoku::GenerateSortedMoves()
+{
+	
+	return vector<MOVE>();
 }
 
 
@@ -1448,9 +1455,15 @@ double Gomoku::EvaluateCandidatePoint(int i, int j)
 {
 	Grid[i][j] = CurrentColor;
 	int color = Grid[i][j];
+	
+	double a =WinFive(i, j, color)* (100000000) + AliveFour(i, j, color) * (3000000) + DeadFourA(i, j, color) * 20000 + DeadFourB(i, j, color) * 18000 + DeadFourC(i, j, color) * 19000 + AliveThree(i, j, color) * 10000 + DeadThressA(i, j, color) * 500 + DeadThressB(i, j, color) * 800 + DeadThressC(i, j, color) * 600 + DeadThressD(i, j, color) * 550 + AliveTwo(i, j, color) * 650 + DeadTwoA(i, j, color) * 150 + DeadTwoB(i, j, color) * 250 + DeadTwoC(i, j, color) * 200;
+	//Grid[i][j] = 0;
+	Grid[i][j] = CurrentColor%2+1;
+	color = Grid[i][j];
+	
+	double b = WinFive(i, j, color)* (100000000) + AliveFour(i, j, color) * (3000000) + DeadFourA(i, j, color) * 20000 + DeadFourB(i, j, color) * 18000 + DeadFourC(i, j, color) * 19000 + AliveThree(i, j, color) * 10000 + DeadThressA(i, j, color) * 500 + DeadThressB(i, j, color) * 800 + DeadThressC(i, j, color) * 600 + DeadThressD(i, j, color) * 550 + AliveTwo(i, j, color) * 650 + DeadTwoA(i, j, color) * 150 + DeadTwoB(i, j, color) * 250 + DeadTwoC(i, j, color) * 200;
 	Grid[i][j] = 0;
-	return  WinFive(i, j, color)* (100000000) + AliveFour(i, j, color) * (3000000) + DeadFourA(i, j, color) * 20000 + DeadFourB(i, j, color) * 18000 + DeadFourC(i, j, color) * 19000 + AliveThree(i, j, color) * 10000 + DeadThressA(i, j, color) * 500 + DeadThressB(i, j, color) * 800 + DeadThressC(i, j, color) * 600 + DeadThressD(i, j, color) * 550 + AliveTwo(i, j, color) * 650 + DeadTwoA(i, j, color) * 150 + DeadTwoB(i, j, color) * 250 + DeadTwoC(i, j, color) * 200;
-
+	return 1.1*a + b;
 }
 
 double Gomoku::EvaluateState()
@@ -1476,7 +1489,7 @@ MoveValue Gomoku::minMax(double alpha, double beta, int maxDepth, int player)
 
 	//vector<MOVE> moves = GenerateLegalMoves();
 
-	vector<MOVE> moves = GernerteSortedMoves(player);
+	vector<MOVE> moves = GenerateSortedMoves(player);
 
 	vector<MOVE>::iterator movesIterator = moves.begin();
 	//iterator<MOVE> movesIterator = moves.iterator();
@@ -1587,8 +1600,8 @@ MoveValue Gomoku::negaMax(int depth, double alpha, double beta, int color)
 
 	//vector<MOVE>LegalMoves = GenerateLegalMoves();
 
-	vector<MOVE>LegalMoves = GernerteSortedMoves(color);
-
+	vector<MOVE>LegalMoves = GenerateSortedMoves(color);
+	int count = 0;
 	vector<MOVE>::iterator movesIterator = LegalMoves.begin();
 	while (movesIterator != LegalMoves.end()) {
 		MOVE currentMove = *movesIterator;
@@ -1602,6 +1615,8 @@ MoveValue Gomoku::negaMax(int depth, double alpha, double beta, int color)
 		if (val > bestMove.returnValue) { bestMove.returnValue = val; bestMove.returnMove = currentMove; }
 		if (val > alpha) { alpha = val; }
 		if (alpha >= beta) break;
+		if (count++ >= 15) break;
+
 	}
 	return bestMove;
 }
@@ -1722,7 +1737,7 @@ void AI_TO_AI() {
 		start = clock();
 
 		//res = AI_b.minMax(-DBL_MAX, DBL_MAX, 2, (AI_b.AIColor));
-		res = AI_b.negaMax(2, -DBL_MAX, DBL_MAX, AI_b.AIColor);
+		res = AI_b.negaMax(4, -DBL_MAX, DBL_MAX, AI_b.AIColor);
 
 
 		DecideMove = res.returnMove;
@@ -1787,8 +1802,8 @@ int main() {
 	//Gomoku test(1);
 	//test.StartAIGame4(1, 2);// Principal_variation_search
 
-	//	Gomoku test(2);
-    //test.StartAIGame3(1, 2);//NegaMax
+	Gomoku test(2);
+    test.StartAIGame3(1, 6);//NegaMax
 	//基本完美
 
 	//test.StartAIGame2(1, 3);//MiniMax
@@ -1798,7 +1813,8 @@ int main() {
 	//狗屁不通
 
 
-	AI_TO_AI();
+	//AI_TO_AI();
+	
 	//AI对战
 	system("pause");
 	return 0;
