@@ -21,6 +21,8 @@ Gomoku AI implement
 #include<cmath>
 #include<fstream>
 #include<algorithm>
+#include <cstdlib>
+#include <ctime>
 
 using namespace std;
 
@@ -187,6 +189,10 @@ public:
 
 	vector<MOVE> FindKillMove(int color);//找出下一步迫使对方防守的步
 	vector<MOVE> FindSafeMove(int color);//找出己方不得不防守的步和通过进攻已达到防守目的的步
+	vector<MOVE> FindDefendMove(int color);//找出己方一步之内不得不防守的步
+	vector<MOVE> FindWinMove(int color);//找出直接连成五个子的棋
+	vector<MOVE> FindSelfNextAliveFour(int color);
+	vector<MOVE> FindRivalNextAliveFour(int color);
 
 
 	int WinFive(int x, int y, int color);
@@ -351,7 +357,7 @@ int Gomoku::WinOrLose()
 		for (j = 0; j < 15; j++)
 		{
 			if (Grid[i][j] == 1) { numberofblack++; numberofwhite = 0; if (numberofblack == 5) return 1; }
-			if (Grid[i][j] == 2) { numberofwhite++; numberofblack = 0; if (numberofblack == 5) return 2; }
+			if (Grid[i][j] == 2) { numberofwhite++; numberofblack = 0; if (numberofwhite == 5) return 2; }
 		}
 	}
 
@@ -362,7 +368,7 @@ int Gomoku::WinOrLose()
 		for (j = 0; j < 15; j++)
 		{
 			if (Grid[j][i] == 1) { numberofblack++; numberofwhite = 0; if (numberofblack == 5) return 1; }
-			if (Grid[j][i] == 2) { numberofwhite++; numberofblack = 0; if (numberofblack == 5) return 2; }
+			if (Grid[j][i] == 2) { numberofwhite++; numberofblack = 0; if (numberofwhite == 5) return 2; }
 		}
 	}
 	//upper_right
@@ -373,7 +379,7 @@ int Gomoku::WinOrLose()
 		for (j = 0; j <= 14 - i; j++)
 		{
 			if (Grid[j][j + i] == 1) { numberofblack++; numberofwhite = 0; if (numberofblack == 5) return 1; }
-			if (Grid[j][j + i] == 2) { numberofwhite++; numberofblack = 0; if (numberofblack == 5) return 2; }
+			if (Grid[j][j + i] == 2) { numberofwhite++; numberofblack = 0; if (numberofwhite == 5) return 2; }
 		}
 	}
 
@@ -385,7 +391,7 @@ int Gomoku::WinOrLose()
 		for (j = i; j <= 14; j++)
 		{
 			if (Grid[j][j - i] == 1) { numberofblack++; numberofwhite = 0; if (numberofblack == 5) return 1; }
-			if (Grid[j][j - i] == 2) { numberofwhite++; numberofblack = 0; if (numberofblack == 5) return 2; }
+			if (Grid[j][j - i] == 2) { numberofwhite++; numberofblack = 0; if (numberofwhite == 5) return 2; }
 		}
 	}
 
@@ -396,7 +402,7 @@ int Gomoku::WinOrLose()
 		for (j = 0; j <= i; j++)
 		{
 			if (Grid[j][i - j] == 1) { numberofblack++; numberofwhite = 0; if (numberofblack == 5) return 1; }
-			if (Grid[j][i - j] == 2) { numberofwhite++; numberofblack = 0; if (numberofblack == 5) return 2; }
+			if (Grid[j][i - j] == 2) { numberofwhite++; numberofblack = 0; if (numberofwhite == 5) return 2; }
 		}
 	}
 
@@ -407,7 +413,7 @@ int Gomoku::WinOrLose()
 		for (j = i; j <= 14; j++)
 		{
 			if (Grid[j][14 + i - j] == 1) { numberofblack++; numberofwhite = 0; if (numberofblack == 5) return 1; }
-			if (Grid[j][14 + i - j] == 2) { numberofwhite++; numberofblack = 0; if (numberofblack == 5) return 2; }
+			if (Grid[j][14 + i - j] == 2) { numberofwhite++; numberofblack = 0; if (numberofwhite == 5) return 2; }
 		}
 	}
 
@@ -717,7 +723,7 @@ void Gomoku::StartAIGame3(int color, int depth)
 
 					//算杀
 					MOVE resMove; MoveValue res;
-					if (MaxKill(8, resMove)) {
+					if (MaxKill(10, resMove)) {
 						cout << "kill!\n";
 						x = resMove.x; y = resMove.y;
 						cout << x << ' ' << y;
@@ -897,7 +903,62 @@ bool Gomoku::MustLose(int i, int j, int color)
 bool Gomoku::MaxKill(int depth, MOVE & killmove)
 {
 	if (WinOrLose() == AIColor && WinOrLose() != 0) return true;
+	if (WinOrLose() == AIColor % 2 + 1 && WinOrLose() != 0) return false;
 	else if (depth < 0) return false;
+	vector<MOVE> rank1 = FindWinMove(AIColor);
+	vector<MOVE> rank2 = FindDefendMove(AIColor);
+	vector<MOVE> rank3 = FindSelfNextAliveFour(AIColor);
+	vector<MOVE> rank4 = FindRivalNextAliveFour(AIColor);
+
+	if (rank1.size() > 0) { killmove = rank1[0]; return true; }
+	else if (rank2.size() > 0) {
+		vector<MOVE>::iterator rank2movesIterator = rank2.begin();
+		while (rank2movesIterator != rank2.end())
+		{
+			MOVE newmove = *rank2movesIterator;
+			Grid[newmove.x][newmove.y] = AIColor;
+			if (MinKill(depth - 1, newmove) == false) {
+				killmove = newmove;
+				Grid[newmove.x][newmove.y] = 0;
+				return true;
+			}
+			Grid[newmove.x][newmove.y] = 0;
+			rank2movesIterator++;
+		}
+	
+	}
+	else if (rank3.size() > 0) {
+		vector<MOVE>::iterator rank3movesIterator = rank3.begin();
+		while (rank3movesIterator!=rank3.end())
+		{
+			MOVE newmove = *rank3movesIterator;
+			Grid[newmove.x][newmove.y] = AIColor;
+			if (MinKill(depth - 1, newmove) == false) {
+				killmove = newmove;
+				Grid[newmove.x][newmove.y] = 0;
+				return true;
+			}
+			Grid[newmove.x][newmove.y] = 0;
+			rank3movesIterator++;
+		}
+	}
+
+	else if (rank4.size() > 0) {
+		vector<MOVE>::iterator rank4movesIterator = rank4.begin();
+		while (rank4movesIterator != rank4.end())
+		{
+			MOVE newmove = *rank4movesIterator;
+			Grid[newmove.x][newmove.y] = AIColor;
+			if (MinKill(depth - 1, newmove) == false) {
+				killmove = newmove;
+				Grid[newmove.x][newmove.y] = 0;
+				return true;
+			}
+			Grid[newmove.x][newmove.y] = 0;
+			rank4movesIterator++;
+		}
+	}
+	
 	vector<MOVE> killer = FindKillMove(AIColor);
 	if (killer.size() == 0) return false;
 	vector<MOVE>::iterator movesIterator = killer.begin();
@@ -919,6 +980,7 @@ bool Gomoku::MaxKill(int depth, MOVE & killmove)
 bool Gomoku::MinKill(int depth, MOVE & protectmove)
 {
 	if (depth < 0 && WinOrLose() != AIColor) return true;
+	if (WinOrLose() == AIColor % 2 + 1) return true;
 	vector<MOVE> protector = FindSafeMove(AIColor % 2 + 1);
 	if (protector.size() == 0) return false;
 	vector<MOVE>::iterator movesIterator = protector.begin();
@@ -1079,22 +1141,97 @@ vector<MOVE> Gomoku::FindSafeMove(int color)
 				Grid[i][j] = color;
 				if (WinFive(i, j, color)) { SelfFive.push_back(MOVE(i, j)); Grid[i][j] = 0; return SelfFive; }//若己方有直接赢的可能，显然直接赢
 				Grid[i][j] = color % 2 + 1;
-				if (WinFive(i, j, color % 2 + 1)) { RivalFive.push_back(MOVE(i, j)); Grid[i][j] = 0; }//若对方下一步就赢，己方这一步赶紧堵上
+				if (WinFive(i, j, color % 2 + 1)) { RivalFive.push_back(MOVE(i, j)); Grid[i][j] = 0;  }//若对方下一步就赢，己方这一步赶紧堵上
 				Grid[i][j] = color;
-				if (AliveFour(i, j, color)) { SelfFour.push_back(MOVE(i, j)); Grid[i][j] = 0; }//对方不会一步之内就赢，而且己方有活四
+				if (AliveFour(i, j, color)) { SelfFour.push_back(MOVE(i, j)); Grid[i][j] = 0; res.push_back(MOVE(i, j));}//对方不会一步之内就赢，而且己方有活四
 				Grid[i][j] = color % 2 + 1;
-				if (AliveFour(i, j, color % 2 + 1)) { RivalFour.push_back(MOVE(i, j)); Grid[i][j] = 0; }//对方不会一步之内就赢，而且己方无活四
+				if (AliveFour(i, j, color % 2 + 1)) { RivalFour.push_back(MOVE(i, j)); Grid[i][j] = 0; res.push_back(MOVE(i, j));}//对方不会一步之内就赢，而且己方无活四
 				Grid[i][j] = color;
-				if (DeadFourA(i, j, color) || DeadFourB(i, j, color) || DeadFourC(i, j, color)) { SelfDeadFour.push_back(MOVE(i, j)); Grid[i][j] = 0; }
+				if (DeadFourA(i, j, color) || DeadFourB(i, j, color) || DeadFourC(i, j, color)) { SelfDeadFour.push_back(MOVE(i, j)); Grid[i][j] = 0; res.push_back(MOVE(i, j));
+				}
 				Grid[i][j] = 0;
 			}
 
 		}
+
+
 				if (RivalFive.size() > 0) return RivalFive;//若对方下一步就赢，己方这一步赶紧堵上
 				else if (SelfFour.size() > 0) return SelfFour;//若对方不会一步之内就赢，而且己方有活四
 				else if (RivalFour.size() > 0) { if (SelfDeadFour.size() > 0) return SelfDeadFour; else return RivalFour; }//对方不会一步之内就赢，而且己方无活四但有死四，否则还是堵起来吧
 			
+			//	else return res;
 				else return vector<MOVE>();
+}
+
+vector<MOVE> Gomoku::FindWinMove(int color)
+{
+	vector<MOVE>res; int i, j;
+	vector<MOVE>SelfFive;
+	for (i = 0; i<15; i++)
+		for (j = 0; j < 15; j++) {
+			if (Grid[i][j] == 0)
+			{
+				Grid[i][j] = color;
+				if (WinFive(i, j, color)) { SelfFive.push_back(MOVE(i, j)); Grid[i][j] = 0; return SelfFive; }//若己方有直接赢的可能，显然直接赢
+				Grid[i][j] = 0;
+			}
+		}
+
+	return SelfFive;
+}
+
+vector<MOVE> Gomoku::FindSelfNextAliveFour(int color)
+{
+	vector<MOVE>res; int i, j;
+	vector<MOVE>SelfFour;
+	for (i = 0; i<15; i++)
+		for (j = 0; j < 15; j++) {
+			if (Grid[i][j] == 0)
+			{
+				Grid[i][j] = color;
+				if (AliveFour(i, j, color)) { SelfFour.push_back(MOVE(i, j)); Grid[i][j] = 0; res.push_back(MOVE(i, j)); }//对方不会一步之内就赢，而且己方有活四
+				Grid[i][j] = 0;
+			}
+		}
+
+
+	return SelfFour;
+}
+
+vector<MOVE> Gomoku::FindRivalNextAliveFour(int color)
+{
+	vector<MOVE>res; int i, j;
+	vector<MOVE>RivalFour;
+	for (i = 0; i<15; i++)
+		for (j = 0; j < 15; j++) {
+			if (Grid[i][j] == 0)
+			{
+				Grid[i][j] = color % 2 + 1;
+				if (AliveFour(i, j, color % 2 + 1)) { RivalFour.push_back(MOVE(i, j)); Grid[i][j] = 0; res.push_back(MOVE(i, j)); }//对方不会一步之内就赢，而且己方无活四
+				Grid[i][j] = 0;
+			}
+		}
+	return RivalFour;
+}
+
+vector<MOVE> Gomoku::FindDefendMove(int color)
+{
+	vector<MOVE>res; int i, j;
+	vector<MOVE>SelfFive;
+	vector<MOVE>RivalFive;
+	vector<MOVE>RivalFour;
+
+	for (i = 0; i<15; i++)
+		for (j = 0; j < 15; j++) {
+			if (Grid[i][j] == 0)
+			{
+				Grid[i][j] = color % 2 + 1;
+				if (WinFive(i, j, color % 2 + 1)) { RivalFive.push_back(MOVE(i, j)); Grid[i][j] = 0; }//若对方下一步就赢，己方这一步赶紧堵上
+				Grid[i][j] = 0;
+			}
+		}
+
+	return RivalFive;
 }
 
 
